@@ -18,12 +18,26 @@ __pycache__/
 .pytest_cache/
 .db
 *.sqlite3
+.python-version
+pip-log.txt
+pip-delete-this-directory.txt
+
+# --- Multimedia & Cargas (CRÍTICO) ---
+# Ignoramos las imágenes que subes en desarrollo para que 
+# no pesen en GitHub. Crea una carpeta 'uploads' o 'static/uploads'
+# y asegúrate de que esté aquí.
+techricci-backend/static/uploads/*
+!techricci-backend/static/uploads/.gitkeep
+# (El .gitkeep es para que la carpeta se cree pero se mantenga vacía)
 
 # --- Base de Datos (Seguridad) ---
 *.sql
 *.mysql
 # Nota: Si decides subir el dump de la DB para la uni, 
 # quita la línea anterior, pero es mejor llevarlo aparte.
+
+# --- Vercel (Configuración Local) ---
+.vercel/
 
 # --- Logs & Debug ---
 logs
@@ -37,6 +51,7 @@ yarn-error.log*
 !.vscode/extensions.json
 .idea/
 .DS_Store
+Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj

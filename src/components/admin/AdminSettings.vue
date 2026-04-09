@@ -13,7 +13,7 @@ const fonts = [
 const theme = reactive({
   font: fonts[0].value,
   customFontName: '',
-  customFontBase64: '', // Guardará la fuente subida
+  customFontBase64: '', 
   light: {
     bg: '#f4f4f5',
     text: '#09090b',
@@ -26,8 +26,11 @@ const theme = reactive({
   }
 })
 
-const activeTab = ref('dark') // 'light' o 'dark'
-const uploadError = ref('') // Manejo de errores de carga
+const activeTab = ref('dark') 
+const uploadError = ref('') 
+
+// --- NUEVO: SISTEMA DE PALETAS ---
+const paletasGuardadas = ref([])
 
 // Cargar desde la base de datos local al iniciar
 onMounted(() => {
@@ -37,18 +40,61 @@ onMounted(() => {
   }
   applySettings()
   
-  // Observar si el usuario cambia el switch del Navbar
+  // Cargar Paletas Guardadas
+  const savedPalettes = localStorage.getItem('techricci_palettes')
+  if (savedPalettes) {
+    paletasGuardadas.value = JSON.parse(savedPalettes)
+  } else {
+    // Paletas por defecto de inspiración Tech
+    paletasGuardadas.value = [
+      { id: 1, bg: '#030303', text: '#ffffff', name: 'Dark Default' },
+      { id: 2, bg: '#0A0F1A', text: '#60A5FA', name: 'Deep Blue' },
+      { id: 3, bg: '#18181B', text: '#A1A1AA', name: 'Terminal' }
+    ]
+  }
+  
   const observer = new MutationObserver(() => applySettings())
   observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
 })
 
-// FUNCIÓN PARA LEER ARCHIVOS DE FUENTE LOCALES
+// --- NUEVAS FUNCIONES DE PALETAS ---
+const guardarPaletaActual = () => {
+  const currentBg = theme[activeTab.value].bg
+  const currentText = theme[activeTab.value].text
+
+  // Evitar duplicados exactos
+  const existe = paletasGuardadas.value.find(p => p.bg === currentBg && p.text === currentText)
+  if (existe) return 
+
+  const nuevaPaleta = {
+    id: Date.now(),
+    bg: currentBg,
+    text: currentText,
+    name: `Custom ${paletasGuardadas.value.length + 1}`
+  }
+  
+  paletasGuardadas.value.push(nuevaPaleta)
+  localStorage.setItem('techricci_palettes', JSON.stringify(paletasGuardadas.value))
+}
+
+const aplicarPaleta = (paleta) => {
+  // Aplica la paleta a la pestaña que esté activa (Light o Dark)
+  theme[activeTab.value].bg = paleta.bg
+  theme[activeTab.value].text = paleta.text
+  // El watch(theme) se encargará de inyectar el CSS automáticamente
+}
+
+const borrarPaleta = (id) => {
+  paletasGuardadas.value = paletasGuardadas.value.filter(p => p.id !== id)
+  localStorage.setItem('techricci_palettes', JSON.stringify(paletasGuardadas.value))
+}
+// ------------------------------------
+
 const handleFontUpload = (event) => {
   uploadError.value = ''
   const file = event.target.files[0]
   if (!file) return
 
-  // Validar tamaño (máximo 2MB para evitar desbordar el localStorage)
   if (file.size > 2 * 1024 * 1024) {
     uploadError.value = 'Archivo muy pesado. Máx 2MB.'
     return
@@ -57,32 +103,28 @@ const handleFontUpload = (event) => {
   const reader = new FileReader()
   reader.onload = (e) => {
     try {
-      // Extraemos el nombre limpio (sin extensión ni caracteres raros)
       const cleanName = file.name.split('.')[0].replace(/[^a-zA-Z0-9]/g, '')
       theme.customFontName = `Custom_${cleanName}`
-      theme.customFontBase64 = e.target.result // La fuente en Base64
-      theme.font = `"${theme.customFontName}", sans-serif` // Seleccionamos la nueva fuente automáticamente
+      theme.customFontBase64 = e.target.result 
+      theme.font = `"${theme.customFontName}", sans-serif` 
       
       applySettings()
     } catch (error) {
       uploadError.value = 'Error procesando la fuente.'
     }
   }
-  reader.readAsDataURL(file) // Lee el archivo como Data URL
+  reader.readAsDataURL(file) 
 }
 
-// INYECCIÓN PROFESIONAL DE CSS
 const applySettings = () => {
   const root = document.documentElement
   const isDark = root.classList.contains('dark')
   const currentMode = isDark ? theme.dark : theme.light
 
-  // 1. Inyectamos las variables de color exactamente como las usa tu tienda
   root.style.setProperty('--color-main-bg', currentMode.bg)
   root.style.setProperty('--color-main-text', currentMode.text)
   root.style.setProperty('--color-glass', currentMode.glass)
 
-  // 2. Fuerza Bruta para la Tipografía (Sobrescribe Tailwind)
   let styleTag = document.getElementById('admin-dynamic-styles')
   if (!styleTag) {
     styleTag = document.createElement('style')
@@ -90,7 +132,6 @@ const applySettings = () => {
     document.head.appendChild(styleTag)
   }
   
-  // Si hay una fuente personalizada cargada, creamos la regla @font-face
   let customFontFaceRule = ''
   if (theme.customFontBase64 && theme.font.includes(theme.customFontName)) {
     customFontFaceRule = `
@@ -101,7 +142,6 @@ const applySettings = () => {
     `
   }
 
-  // Esto obliga a que absolutamente todos los textos usen la fuente elegida
   styleTag.innerHTML = `
     ${customFontFaceRule}
     body, h1, h2, h3, h4, h5, p, span, a, button, input, select {
@@ -109,7 +149,6 @@ const applySettings = () => {
     }
   `
 
-  // 3. Guardamos el estado para que no se pierda al recargar
   try {
     localStorage.setItem('techricci_theme_config', JSON.stringify(theme))
   } catch (e) {
@@ -117,30 +156,24 @@ const applySettings = () => {
   }
 }
 
-// Escuchar cambios en tiempo real sin tener que darle a "Guardar"
 watch(theme, () => {
   applySettings()
 }, { deep: true })
 
-// NUEVO RESET ABSOLUTO DE FÁBRICA
 const resetDefaults = () => {
-  // 1. Restauramos el estado reactivo a los valores originales
   theme.font = fonts[0].value
   theme.customFontName = ''
   theme.customFontBase64 = ''
   theme.light = { bg: '#f4f4f5', text: '#09090b', glass: 'rgba(255, 255, 255, 0.7)' }
   theme.dark = { bg: '#030303', text: '#ffffff', glass: 'rgba(255, 255, 255, 0.05)' }
   
-  // 2. Limpiamos la memoria local
   localStorage.removeItem('techricci_theme_config')
   
-  // 3. Destruimos la etiqueta de inyección CSS para que Tailwind recupere el control
   const styleTag = document.getElementById('admin-dynamic-styles')
   if (styleTag) {
     styleTag.remove()
   }
 
-  // 4. Forzamos la recarga de las variables originales
   applySettings()
 }
 </script>
@@ -225,7 +258,48 @@ const resetDefaults = () => {
         </div>
       </div>
       
-    </div>
+      <div class="border-t border-[var(--color-glass-border)] pt-6 mt-6">
+        <div class="flex justify-between items-center mb-4">
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider mb-1">Paletas Guardadas</label>
+            <p class="text-[9px] font-mono opacity-50">Presets Rápidos</p>
+          </div>
+          <button @click="guardarPaletaActual" class="text-[9px] font-mono flex items-center gap-2 text-red-500 hover:text-white border border-red-500/30 hover:border-red-500/80 hover:bg-red-500/20 px-3 py-1.5 rounded-lg transition-all uppercase tracking-widest">
+            <span>+</span> Guardar
+          </button>
+        </div>
+
+        <div class="flex gap-3 overflow-x-auto pb-2 hide-scrollbar">
+          
+          <div 
+            v-for="paleta in paletasGuardadas" 
+            :key="paleta.id"
+            class="group relative shrink-0 flex items-center border-2 border-[var(--color-glass-border)] hover:border-red-500/50 rounded-xl p-1 cursor-pointer transition-all hover:scale-105"
+            @click="aplicarPaleta(paleta)"
+            title="Clic para aplicar"
+          >
+            <div class="w-10 h-10 rounded-lg overflow-hidden flex shadow-inner border border-black/50">
+              <div class="w-1/2 h-full" :style="{ backgroundColor: paleta.bg }"></div>
+              <div class="w-1/2 h-full relative" :style="{ backgroundColor: paleta.text }">
+                 <span class="absolute inset-0 flex items-center justify-center text-[10px] font-bold opacity-90" :style="{ color: paleta.bg }">A</span>
+              </div>
+            </div>
+            
+            <button 
+              @click.stop="borrarPaleta(paleta.id)" 
+              class="absolute -top-2 -right-2 bg-[var(--color-main-bg)] border border-red-500 text-red-500 hover:bg-red-500 hover:text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-all shadow-lg z-10"
+              title="Borrar Paleta"
+            >
+              ✕
+            </button>
+          </div>
+
+          <p v-if="paletasGuardadas.length === 0" class="text-[10px] font-mono opacity-50 italic my-2 w-full py-2">
+            Sin paletas guardadas.
+          </p>
+        </div>
+      </div>
+      </div>
 
     <button @click="resetDefaults" class="w-full py-4 border border-red-500/20 text-red-500 font-mono text-[10px] uppercase tracking-[0.2em] rounded-xl hover:bg-red-500 hover:text-white hover:border-red-500 transition-all">
       Restablecer Parámetros Originales
@@ -233,3 +307,14 @@ const resetDefaults = () => {
 
   </div>
 </template>
+
+<style scoped>
+/* Ocultar barra de scroll para el slider de paletas */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+</style>

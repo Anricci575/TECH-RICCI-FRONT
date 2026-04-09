@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import Navbar from './Navbar.vue'
 import Hero from './Hero.vue'
 import ProductCard from './ProductCard.vue'
+import CartDrawer from './CartDrawer.vue' // <-- 1. IMPORTAMOS EL CARRITO
 
 const router = useRouter()
 const carouselRef = ref(null)
@@ -58,6 +59,8 @@ const servicios = [
   <div class="min-h-screen transition-colors duration-500 bg-[var(--color-main-bg)] text-[var(--color-main-text)] font-sans selection:bg-red-500/30 selection:text-red-600 dark:selection:text-red-200 bg-grid-tech">
     
     <Navbar />
+    <CartDrawer />
+    
     <Hero />
     
     <section id="tienda" class="max-w-[1400px] mx-auto px-6 py-20 relative z-10 text-[var(--color-main-text)]">
@@ -100,10 +103,11 @@ const servicios = [
           class="snap-start shrink-0 w-[85vw] md:w-[400px] transition-transform duration-300 hover:-translate-y-2"
         >
           <ProductCard 
-            :nombre="pc.nombre" 
+            :id="pc.id"  :nombre="pc.nombre" 
             :precio="pc.precio" 
             :descripcion="pc.descripcion" 
-            :categoria="pc.categoria" 
+            :categoria="pc.categoria"
+            :imagen="pc.imagen" 
           />
         </div>
       </div>

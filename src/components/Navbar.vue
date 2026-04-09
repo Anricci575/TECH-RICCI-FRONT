@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import ThemeToggle from './ThemeToggle.vue'
+import { cartItemCount, toggleCart } from '../store/cart' // <-- 1. IMPORTAMOS EL CEREBRO DEL CARRITO
 
 const router = useRouter()
 const userName = ref('Guest')
@@ -58,6 +59,22 @@ const handleLogout = () => {
           <span>⚙️ Panel</span>
         </button>
 
+        <button 
+          @click="toggleCart"
+          class="relative flex items-center justify-center p-2 rounded-full border border-[var(--color-glass-border)] hover:border-red-500 hover:text-red-500 transition-all group bg-[var(--color-main-bg)]/50"
+          title="Ver Bandeja de Entrada"
+        >
+          <svg class="w-4 h-4 opacity-80 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+          </svg>
+          
+          <span 
+            v-if="cartItemCount > 0"
+            class="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-[var(--color-main-bg)] shadow-[0_0_10px_rgba(255,0,0,0.8)] animate-pulse-slow"
+          >
+            {{ cartItemCount }}
+          </span>
+        </button>
         <ThemeToggle />
 
         <button 
@@ -72,3 +89,14 @@ const handleLogout = () => {
     </nav>
   </div>
 </template>
+
+<style scoped>
+/* Pequeña animación extra para que la burbuja llame la atención suavemente */
+.animate-pulse-slow {
+  animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .8; transform: scale(1.05); }
+}
+</style>
