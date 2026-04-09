@@ -8,13 +8,21 @@ from routers import products, users
 from models.user import UserModel
 from models.product import ProductModel 
 
-# 1. SEGURIDAD: Crear carpetas para imágenes si no existen
+# 1. SEGURIDAD Y COMPATIBILIDAD VERCEL: 
+# Crear carpetas para imágenes solo si el sistema lo permite
 UPLOAD_DIR = "static/uploads"
-if not os.path.exists(UPLOAD_DIR):
-    os.makedirs(UPLOAD_DIR)
+try:
+    if not os.path.exists(UPLOAD_DIR):
+        os.makedirs(UPLOAD_DIR)
+except OSError:
+    # Vercel es "Serverless" y de solo lectura. Capturamos el error para que no colapse.
+    pass
 
 # Esto crea las tablas en MySQL (User y Product) si no existen
-Base.metadata.create_all(bind=engine)
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception as e:
+    print(f"Alerta DB: {e}")
 
 app = FastAPI(
     title="TechRicci API",
@@ -22,23 +30,22 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configuración de CORS robusta
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
-
+# Configuración de CORS robusta para la Nube
+# Expandimos origins a "*" para evitar bloqueos del navegador en producción
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # 2. MONTAR CARPETA ESTÁTICA 
-# Esto permite que las imágenes sean accesibles vía URL
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Usamos try/except por si la carpeta no existe en el entorno Serverless
+try:
+    app.mount("/static", StaticFiles(directory="static"), name="static")
+except RuntimeError:
+    pass
 
 # Registro de Routers
 app.include_router(users.router, prefix="/api/v1/users", tags=["Authentication"])
@@ -46,4 +53,4 @@ app.include_router(products.router, prefix="/api/v1/products", tags=["Inventory"
 
 @app.get("/")
 def root():
-    return {"message": "TechRicci API SYSTEM_ONLINE - MySQL Connected and Static Files Mounted"}
+    return {"message": "TechRicci API SYSTEM_ONLINE - MySQL Connected and Vercel Ready"}

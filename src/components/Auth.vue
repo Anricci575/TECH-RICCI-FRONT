@@ -23,7 +23,7 @@ const handleSubmit = async () => {
   try {
     if (!isLogin.value) {
       // ---> LÓGICA DE REGISTRO REAL <---
-      const response = await fetch('http://127.0.0.1:8000/api/v1/users/register', {
+      const response = await fetch('/api/v1/users/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
